@@ -13,10 +13,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 base_name = 'debug'
 batch_size = 128
 learning_rate = 1e-3
-num_epochs = 100
+num_epochs = 20
 decay_value = 0.999
 use_or_lose = True
-kill_threshold = 1e-2
+kill_threshold = 1e-4
 # tensorboard
 logger_folder = 'loggin_stuff'
 writer = SummaryWriter(log_dir=os.path.join(logger_folder, base_name), flush_secs=1)
@@ -64,6 +64,13 @@ for epoch in range(num_epochs):
         # Backward
         loss.backward()
 
+        # 0 grads
+        with torch.no_grad():
+            for name, layer in model.named_children():
+                if isinstance(layer, nn.Linear):
+                    mask = model.masks[name]
+                    if layer.weight.grad is not None:
+                        layer.weight.grad *= mask
         # step
         optimizer.step()
         global_step = epoch * len(train_loader) + batch_idx
@@ -97,8 +104,8 @@ for epoch in range(num_epochs):
                 if param.grad is not None:
                     lr = optimizer.param_groups[0]["lr"]
                     avg_grad_update = (param.grad.abs() * lr).mean().item()
-                    writer.add_scalar(f"GradUpdates/{layer_name}", avg_grad_update, global_step)
-                    writer.add_scalar(f"GradRatio/{layer_name}", (avg_grad_update / avg_weight), global_step)
+                    # writer.add_scalar(f"GradUpdates/{layer_name}", avg_grad_update, global_step)
+                    # writer.add_scalar(f"GradRatio/{layer_name}", (avg_grad_update / avg_weight), global_step)
 
     print(f"Epoch [{epoch + 1}/{num_epochs}] completed.")
 

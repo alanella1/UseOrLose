@@ -46,12 +46,14 @@ class UseOrLose(nn.Module):
                 total_weights = {}
                 if isinstance(layer, nn.Linear):
                     mask = self.masks[name]
+                    temp_mask = torch.tensor(mask, device='cuda')
                     small_weights = layer.weight.abs() < self.kill_threshold
 
                     killed_count = small_weights.sum().item()
                     total_count = layer.weight.numel()
 
                     mask[small_weights] = 0
+                    mask *= temp_mask
                     layer.weight[small_weights] = 0
 
                     killed_weights[name] = killed_count
